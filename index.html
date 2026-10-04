@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard Peminjaman</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #formModal .modal-content { border: 0; border-radius: .75rem; overflow: hidden; }
+        #formModal .modal-header { background: #0d6efd; color: #fff; }
+        #formModal .modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+        #formModal .modal-body { background: #f8f9fa; max-height: 70vh; overflow-y: auto; }
+        #formModal .modal-footer { background: #fff; }
+        .form-section { background: #fff; border: 1px solid #e3e6ea; border-radius: .6rem;
+                        padding: 1rem 1.1rem 1.2rem; margin-bottom: 1rem; }
+        .form-section-title { font-size: .8rem; font-weight: 700; letter-spacing: .06em;
+                              text-transform: uppercase; color: #0d6efd; margin-bottom: .8rem;
+                              padding-bottom: .4rem; border-bottom: 1px solid #eef0f3; }
+        #formModal .form-control, #formModal .form-select { padding: .55rem .75rem; }
+        #formModal .form-control:disabled { background: #eef0f3; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary">
+    <div class="container">
+        <span class="navbar-brand fw-bold">Sistem Peminjaman</span>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h2>Dashboard</h2>
+        <p class="text-muted">CRUD Master Asset, Mahasiswa, dan Transaksi Peminjaman</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5>Master Asset</h5>
+                    <h2 id="jumlahAsset">0</h2>
+                    <button class="btn btn-primary btn-sm" onclick="loadAsset()">Lihat Data</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5>Master Mahasiswa</h5>
+                    <h2 id="jumlahMahasiswa">0</h2>
+                    <button class="btn btn-success btn-sm" onclick="loadMahasiswa()">Lihat Data</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5>Peminjaman</h5>
+                    <h2 id="jumlahPeminjaman">0</h2>
+                    <button class="btn btn-warning btn-sm" onclick="loadPeminjaman()">Lihat Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 id="judulTabel">Data Asset</h4>
+                <button class="btn btn-primary" onclick="tambahData()">+ Tambah Data</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-primary" id="tableHead"></thead>
+                    <tbody id="tableBody">
+                        <tr><td class="text-center">Pilih menu di atas.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Tambah Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="formBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button class="btn btn-primary" onclick="simpanData()">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+let menu = "asset";
+let editId = null;
+const modal = new bootstrap.Modal(document.getElementById("formModal"));
+
+async function api(url, options = {}) {
+    const response = await fetch(url, options);
+    return await response.json();
+}
+
+function loadAsset() {
+    menu = "asset";
+    document.getElementById("judulTabel").innerText = "Data Asset";
+    document.getElementById("tableHead").innerHTML =
+        "<tr><th>ID</th><th>Nama Asset</th><th>Kategori</th><th>Jumlah</th><th>Kondisi</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr>";
+
+    api("asset/read.php").then(result => {
+        const data = result.data || [];
+        document.getElementById("jumlahAsset").innerText = data.length;
+        document.getElementById("tableBody").innerHTML = data.map(x => `
+            <tr>
+                <td>${x.id}</td>
+                <td>${x.nama_asset}</td>
+                <td>${x.kategori}</td>
+                <td>${x.jumlah}</td>
+                <td>${x.kondisi}</td>
+                <td>${x.lokasi}</td>
+                <td><span class="badge bg-success">${x.status}</span></td>
+                <td>
+                    <button class="btn btn-warning btn-sm" onclick='editAsset(${JSON.stringify(x)})'>Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="hapus('asset', ${x.id})">Hapus</button>
+                </td>
+            </tr>
+        `).join("");
+    });
+}
+
+function loadMahasiswa() {
+    menu = "mahasiswa";
+    document.getElementById("judulTabel").innerText = "Data Mahasiswa";
+    document.getElementById("tableHead").innerHTML =
+        "<tr><th>ID</th><th>NIM</th><th>Nama</th><th>Jurusan</th><th>Angkatan</th><th>Email</th><th>Telepon</th><th>Aksi</th></tr>";
+
+    api("mahasiswa/read.php").then(result => {
+        const data = result.data || [];
+        document.getElementById("jumlahMahasiswa").innerText = data.length;
+        document.getElementById("tableBody").innerHTML = data.map(x => `
+            <tr>
+                <td>${x.id}</td>
+                <td>${x.nim}</td>
+                <td>${x.nama}</td>
+                <td>${x.jurusan}</td>
+                <td>${x.angkatan}</td>
+                <td>${x.email || "-"}</td>
+                <td>${x.telepon || "-"}</td>
+                <td>
+                    <button class="btn btn-warning btn-sm" onclick='editMahasiswa(${JSON.stringify(x)})'>Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="hapus('mahasiswa', ${x.id})">Hapus</button>
+                </td>
+            </tr>
+        `).join("");
+    });
+}
+
+function loadPeminjaman() {
+    menu = "peminjaman";
+    document.getElementById("judulTabel").innerText = "Data Peminjaman";
+    document.getElementById("tableHead").innerHTML =
+        "<tr><th>ID</th><th>Mahasiswa</th><th>Asset</th><th>Jumlah</th><th>Tgl Pinjam</th><th>Tgl Kembali</th><th>Status</th><th>Aksi</th></tr>";
+
+    api("peminjaman/read.php").then(result => {
+        const data = result.data || [];
+        document.getElementById("jumlahPeminjaman").innerText = data.length;
+        document.getElementById("tableBody").innerHTML = data.map(x => `
+            <tr>
+                <td>${x.id_peminjaman}</td>
+                <td>${x.nama_mahasiswa || x.id_mahasiswa}</td>
+                <td>${x.nama_asset || x.id_asset}</td>
+                <td>${x.jumlah}</td>
+                <td>${x.tanggal_pinjam}</td>
+                <td>${x.tanggal_kembali || "-"}</td>
+                <td><span class="badge bg-warning text-dark">${x.status_peminjaman}</span></td>
+                <td>
+                    <button class="btn btn-warning btn-sm" onclick='editPeminjaman(${JSON.stringify(x)})'>Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="hapusPeminjaman(${x.id_peminjaman})">Hapus</button>
+                </td>
+            </tr>
+        `).join("");
+    });
+}
+
+const judulMenu = {asset: "Asset", mahasiswa: "Mahasiswa", peminjaman: "Peminjaman"};
+
+function esc(v) {
+    return String(v ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Satu kolom input: judul (label) di atas, input di bawah, hint opsional
+function field({id, label, type = "text", value = "", placeholder = "", hint = "",
+                required = false, col = "col-md-6", disabled = false, list = ""}) {
+    return `
+        <div class="${col}">
+            <label for="${id}" class="form-label fw-semibold">
+                ${label}${required ? ' <span class="text-danger">*</span>' : ""}
+            </label>
+            <input id="${id}" type="${type}" class="form-control"
+                   placeholder="${esc(placeholder)}" value="${esc(value)}"
+                   ${list ? `list="${list}"` : ""} ${disabled ? "disabled" : ""}>
+            ${hint ? `<div class="form-text">${hint}</div>` : ""}
+        </div>`;
+}
+
+function selectField({id, label, options, value = "", col = "col-md-6", required = false}) {
+    return `
+        <div class="${col}">
+            <label for="${id}" class="form-label fw-semibold">
+                ${label}${required ? ' <span class="text-danger">*</span>' : ""}
+            </label>
+            <select id="${id}" class="form-select">
+                ${options.map(o => `<option ${o === value ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
+        </div>`;
+}
+
+function textareaField({id, label, value = "", placeholder = "", col = "col-12"}) {
+    return `
+        <div class="${col}">
+            <label for="${id}" class="form-label fw-semibold">${label}</label>
+            <textarea id="${id}" class="form-control" rows="3"
+                      placeholder="${esc(placeholder)}">${esc(value)}</textarea>
+        </div>`;
+}
+
+function section(title, content) {
+    return `
+        <div class="form-section">
+            <div class="form-section-title">${title}</div>
+            <div class="row g-3">${content}</div>
+        </div>`;
+}
+
+function note() {
+    return `<div class="small text-muted mb-3"><span class="text-danger">*</span> wajib diisi</div>`;
+}
+
+function tambahData() {
+    editId = null;
+    document.getElementById("modalTitle").innerText = "Tambah Data " + judulMenu[menu];
+    if (menu === "asset") formAsset();
+    if (menu === "mahasiswa") formMahasiswa();
+    if (menu === "peminjaman") formPeminjaman();
+    modal.show();
+}
+
+function formAsset(data = {}) {
+    document.getElementById("formBody").innerHTML = note() +
+        section("Informasi Asset",
+            field({id: "nama_asset", label: "Nama Asset", value: data.nama_asset, placeholder: "Contoh: Laptop Asus ROG", required: true, col: "col-12"}) +
+            field({id: "kategori", label: "Kategori", value: data.kategori, placeholder: "Contoh: Elektronik", required: true, list: "listKategori"}) +
+            field({id: "jumlah", label: "Jumlah", type: "number", value: data.jumlah, placeholder: "Contoh: 3", required: true})
+        ) +
+        section("Kondisi dan Lokasi",
+            field({id: "kondisi", label: "Kondisi", value: data.kondisi, placeholder: "Contoh: Baik", required: true, list: "listKondisi"}) +
+            field({id: "lokasi", label: "Lokasi", value: data.lokasi, placeholder: "Contoh: Lab Komputer 1", required: true}) +
+            field({id: "status", label: "Status", value: data.status, placeholder: "Contoh: Tersedia", required: true, list: "listStatusAsset"})
+        ) + `
+        <datalist id="listKategori"><option value="Elektronik"><option value="Furniture"><option value="Alat Lab"></datalist>
+        <datalist id="listKondisi"><option value="Baik"><option value="Rusak Ringan"><option value="Rusak Berat"></datalist>
+        <datalist id="listStatusAsset"><option value="Tersedia"><option value="Dipinjam"><option value="Perawatan"></datalist>`;
+}
+
+function formMahasiswa(data = {}) {
+    document.getElementById("formBody").innerHTML = note() +
+        section("Data Diri",
+            field({id: "nim", label: "NIM", value: data.nim, placeholder: "Contoh: 210101001", required: true}) +
+            field({id: "nama", label: "Nama Lengkap", value: data.nama, placeholder: "Contoh: Ahmad Rizki Pratama", required: true})
+        ) +
+        section("Akademik",
+            field({id: "jurusan", label: "Jurusan", value: data.jurusan, placeholder: "Contoh: Teknik Informatika", required: true}) +
+            field({id: "angkatan", label: "Angkatan", type: "number", value: data.angkatan, placeholder: "Contoh: 2021", required: true})
+        ) +
+        section("Kontak",
+            field({id: "email", label: "Email", type: "email", value: data.email, placeholder: "contoh@email.com"}) +
+            field({id: "telepon", label: "Telepon", type: "tel", value: data.telepon, placeholder: "Contoh: 081234567890"})
+        );
+}
+
+function formPeminjaman(data = {}) {
+    document.getElementById("formBody").innerHTML = note() +
+        section("Peminjam dan Asset",
+            field({id: "id_mahasiswa", label: "ID Mahasiswa", type: "number", value: data.id_mahasiswa, placeholder: "Contoh: 1", hint: "Isi dengan ID dari tabel Data Mahasiswa.", required: true}) +
+            field({id: "id_asset", label: "ID Asset", type: "number", value: data.id_asset, placeholder: "Contoh: 1", hint: "Isi dengan ID dari tabel Data Asset.", required: true}) +
+            field({id: "jumlah_pinjam", label: "Jumlah Dipinjam", type: "number", value: data.jumlah, placeholder: "Contoh: 1", hint: "Tidak boleh melebihi stok asset.", required: true})
+        ) +
+        section("Jadwal Peminjaman",
+            field({id: "tanggal_pinjam", label: "Tanggal Pinjam", type: "date", value: data.tanggal_pinjam, required: true}) +
+            field({id: "tanggal_kembali", label: "Tanggal Kembali", type: "date", value: data.tanggal_kembali, hint: "Boleh dikosongkan jika belum ditentukan."})
+        ) +
+        section("Keterangan",
+            selectField({id: "status_peminjaman", label: "Status Peminjaman", options: ["Pending", "Dipinjam", "Dikembalikan", "Ditolak"], value: data.status_peminjaman || "Pending", required: true}) +
+            textareaField({id: "keterangan", label: "Keterangan", value: data.keterangan, placeholder: "Tujuan atau catatan peminjaman (opsional)"})
+        );
+}
+
+function editAsset(data) {
+    menu = "asset";
+    editId = data.id;
+    document.getElementById("modalTitle").innerText = "Edit Data Asset";
+    formAsset(data);
+    modal.show();
+}
+
+function editMahasiswa(data) {
+    menu = "mahasiswa";
+    editId = data.id;
+    document.getElementById("modalTitle").innerText = "Edit Data Mahasiswa";
+    formMahasiswa(data);
+    modal.show();
+}
+
+function editPeminjaman(data) {
+    menu = "peminjaman";
+    editId = data.id_peminjaman;
+
+    document.getElementById("modalTitle").innerText = "Edit Data Peminjaman";
+
+    document.getElementById("formBody").innerHTML =
+        `<div class="alert alert-info py-2 small">Mahasiswa, asset, jumlah, dan tanggal pinjam tidak dapat diubah.</div>` +
+        section("Detail Peminjaman (hanya baca)",
+            field({id: "view_mahasiswa", label: "Mahasiswa", value: data.nama_mahasiswa || data.nim || "-", disabled: true}) +
+            field({id: "view_asset", label: "Asset", value: data.nama_asset || "-", disabled: true}) +
+            field({id: "view_jumlah", label: "Jumlah", value: data.jumlah || "", disabled: true}) +
+            field({id: "view_tanggal_pinjam", label: "Tanggal Pinjam", value: data.tanggal_pinjam || "", disabled: true})
+        ) +
+        section("Perbarui Data",
+            selectField({id: "edit_status_peminjaman", label: "Status Peminjaman", options: ["Pending", "Dipinjam", "Dikembalikan", "Ditolak"], value: data.status_peminjaman}) +
+            field({id: "edit_tanggal_kembali", label: "Tanggal Kembali", type: "date", value: data.tanggal_kembali || "", hint: "Boleh dikosongkan."}) +
+            textareaField({id: "edit_keterangan", label: "Keterangan", value: data.keterangan || "", placeholder: "Catatan peminjaman (opsional)"})
+        );
+
+    modal.show();
+}
+
+async function simpanData() {
+    let url, body;
+
+    if (menu === "asset") {
+        url = editId ? "asset/update.php" : "asset/create.php";
+        body = {
+            ...(editId ? {id: editId} : {}),
+            nama_asset: document.getElementById("nama_asset").value,
+            kategori: document.getElementById("kategori").value,
+            jumlah: Number(document.getElementById("jumlah").value),
+            kondisi: document.getElementById("kondisi").value,
+            lokasi: document.getElementById("lokasi").value,
+            status: document.getElementById("status").value
+        };
+    } else if (menu === "mahasiswa") {
+        url = editId ? "mahasiswa/update.php" : "mahasiswa/create.php";
+        body = {
+            ...(editId ? {id: editId} : {}),
+            nim: document.getElementById("nim").value,
+            nama: document.getElementById("nama").value,
+            jurusan: document.getElementById("jurusan").value,
+            angkatan: Number(document.getElementById("angkatan").value),
+            email: document.getElementById("email").value,
+            telepon: document.getElementById("telepon").value
+        };
+    } else {
+        if (editId) {
+            url = "peminjaman/update.php";
+            body = {
+                id_peminjaman: editId,
+                status_peminjaman: document.getElementById("edit_status_peminjaman").value,
+                tanggal_kembali: document.getElementById("edit_tanggal_kembali").value || null,
+                keterangan: document.getElementById("edit_keterangan").value
+            };
+        } else {
+            url = "peminjaman/create.php";
+            body = {
+                id_mahasiswa: Number(document.getElementById("id_mahasiswa").value),
+                id_asset: Number(document.getElementById("id_asset").value),
+                jumlah: Number(document.getElementById("jumlah_pinjam").value),
+                tanggal_pinjam: document.getElementById("tanggal_pinjam").value,
+                tanggal_kembali: document.getElementById("tanggal_kembali").value || null,
+                keterangan: document.getElementById("keterangan").value,
+                status_peminjaman: document.getElementById("status_peminjaman").value
+            };
+        }
+    }
+
+    const result = await api(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+    });
+
+    alert(result.message || "Data berhasil diproses");
+    modal.hide();
+
+    if (menu === "asset") loadAsset();
+    if (menu === "mahasiswa") loadMahasiswa();
+    if (menu === "peminjaman") loadPeminjaman();
+}
+
+async function hapus(tipe, id) {
+    if (!confirm("Yakin ingin menghapus data ini?")) return;
+
+    const result = await api(`${tipe}/delete.php?id=${id}`, {method: "DELETE"});
+    alert(result.message || "Data berhasil dihapus");
+
+    if (tipe === "asset") loadAsset();
+    if (tipe === "mahasiswa") loadMahasiswa();
+}
+
+async function hapusPeminjaman(id) {
+    if (!confirm("Yakin ingin menghapus data ini?")) return;
+
+    const result = await api(`peminjaman/delete.php?id_peminjaman=${id}`, {method: "DELETE"});
+    alert(result.message || "Data berhasil dihapus");
+    loadPeminjaman();
+}
+
+loadAsset();
+</script>
+
+</body>
+</html>
